@@ -47,6 +47,7 @@ def h5_loader(path):
 #     return rgb[:,:,0] * 0.2989 + rgb[:,:,1] * 0.587 + rgb[:,:,2] * 0.114
 
 to_tensor = transforms.ToTensor()
+from_tensor = transforms.FromTensor()
 
 
 class MyDataloader(data.Dataset):
@@ -132,3 +133,6 @@ class MyDataloader(data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
+    def inv_preprocess(self, input_tensor):
+        return from_tensor(input_tensor)
