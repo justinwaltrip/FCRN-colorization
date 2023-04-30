@@ -51,4 +51,12 @@ class NYUDataset(MyDataloader):
 
     def inv_val_transform(self, rgb_np, depth_np):
         rgb_np = rgb_np * 255
-        return rgb_np, depth_np
+        inv_transform = transforms.Compose(
+            [
+                transforms.Resize(iheight / 240.0),
+            ]
+        )
+        rgb_np = np.asarray(rgb_np, dtype="uint8")
+        rgb = inv_transform(rgb_np)
+        depth = inv_transform(depth_np[:, :, 0])
+        return rgb, depth

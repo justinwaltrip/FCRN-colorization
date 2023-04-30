@@ -161,3 +161,11 @@ def add_row(img_merge, row):
 def save_image(img_merge, filename):
     img_merge = Image.fromarray(img_merge.astype("uint8"))
     img_merge.save(filename)
+
+
+def get_sample_imgs(sample, loader):
+    input, target = sample
+    input, target = loader.dataset.inv_preprocess(input[0], target[0])
+    input, target = loader.dataset.inv_val_transform(input, target)
+    colored_target = colored_depthmap(target)
+    return input, colored_target

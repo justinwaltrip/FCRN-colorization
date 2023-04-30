@@ -94,14 +94,11 @@ def main():
 
     train_loader, val_loader = create_loader(args)
 
-    # TODO remove (visualize validation data)
-    val_sample = next(iter(val_loader))
-    input, target = val_sample
-    input, target = val_loader.dataset.inv_val_transform(input, target)
-    input = val_loader.dataset.inv_preprocess(input[0])
-
-    # save input as image
-    utils.save_image(input, "input.png")
+    # # TODO remove (visualize validation data)
+    # val_sample = next(iter(val_loader))
+    # input, target = utils.get_sample_imgs(val_sample, val_loader)
+    # utils.save_image(input, "input.png")
+    # utils.save_image(target, "target.png")
 
     # open input as image
     input = input.numpy()

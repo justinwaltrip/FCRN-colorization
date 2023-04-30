@@ -134,5 +134,5 @@ class MyDataloader(data.Dataset):
     def __len__(self):
         return len(self.imgs)
 
-    def inv_preprocess(self, input_tensor):
-        return from_tensor(input_tensor)
+    def inv_preprocess(self, input_tensor, depth_tensor):
+        return from_tensor(input_tensor), from_tensor(depth_tensor)
