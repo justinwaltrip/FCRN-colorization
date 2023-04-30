@@ -10,7 +10,8 @@ class Path(object):
     @staticmethod
     def db_root_dir(database):
         if database == 'nyu':
-            return '/home/data/model/wangxin/nyudepthv2'
+            # return '/home/data/model/wangxin/nyudepthv2'
+            return './'
         elif database == 'kitti':
             return '/home/data/UnsupervisedDepth/wangixn/kitti'
         else:
