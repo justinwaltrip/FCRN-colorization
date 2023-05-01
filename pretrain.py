@@ -135,7 +135,8 @@ def main():
         optimizer, 'min', patience=args.lr_patience)
 
     # loss function
-    criterion = criteria.MaskedL1Loss()
+    # criterion = criteria.MaskedL1Loss() - for depth perceptron
+    criterion = nn.MSELoss() # MSELoss for colorization
 
     # create directory path
     output_directory = utils.get_output_directory(args)
