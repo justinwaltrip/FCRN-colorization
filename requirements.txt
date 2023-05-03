@@ -5,3 +5,4 @@ pillow
 tensorboardX
 scipy
 h5py
+wandb

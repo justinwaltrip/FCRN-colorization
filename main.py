@@ -1,10 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
- @Time    : 2019/1/21 15:25
- @Author  : Wang Xin
- @Email   : wangxin_buaa@163.com
-"""
-
+import wandb
 from datetime import datetime
 import shutil
 import socket
@@ -20,8 +14,6 @@ import utils
 import criteria
 import os
 import torch.nn as nn
-
-import numpy as np
 
 from network import FCRN
 
@@ -60,9 +52,9 @@ def create_loader(args):
     elif args.dataset == "nyu":
         # if overfit, train and val set are the same
         if args.overfit:
-            overfit_size = 50
-            train_set = nyu_dataloader.NYUDataset(traindir, type="train")
-            train_set = [train_set[i] for i in range(overfit_size)]
+            train_set = nyu_dataloader.NYUDataset(
+                traindir, type="train", small_subset=True
+            )
             val_set = train_set
         else:
             train_set = nyu_dataloader.NYUDataset(traindir, type="train")
@@ -99,6 +91,12 @@ def create_loader(args):
     return train_loader, val_loader
 
 
+def visualize_val_sample(val_sample, val_loader):
+    input, target = utils.get_sample_imgs(val_sample, val_loader)
+    utils.save_image(input, "input.png")
+    utils.save_image(target, "target.png")
+
+
 def main():
     global args, best_result, output_directory
 
@@ -113,13 +111,10 @@ def main():
     else:
         print(f"Using device {device}")
 
-    train_loader, val_loader = create_loader(args)
+    # start new wandb run
+    wandb.init(project="fcrn-colorization", notes="baseline")
 
-    # # visualize validation data
-    # val_sample = next(iter(val_loader))
-    # input, target = utils.get_sample_imgs(val_sample, val_loader)
-    # utils.save_image(input, "input.png")
-    # utils.save_image(target, "target.png")
+    train_loader, val_loader = create_loader(args)
 
     if args.resume:
         assert os.path.isfile(args.resume), "=> no checkpoint found at '{}'".format(
@@ -157,7 +152,6 @@ def main():
             {"params": model.get_10x_lr_params(), "lr": args.lr * 10},
         ]
 
-        # optimizer = torch.optim.SGD(train_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
         optimizer = torch.optim.Adam(
             train_params, lr=args.lr, weight_decay=args.weight_decay
         )
@@ -206,12 +200,13 @@ def main():
             old_lr = float(param_group["lr"])
             logger.add_scalar("Lr/lr_" + str(i), old_lr, epoch)
 
-        train(
-            train_loader, model, criterion, optimizer, epoch, logger, device
-        )  # train for one epoch
+        # train for one epoch
+        train(train_loader, model, criterion, optimizer, epoch, logger, device)
+
+        # evaluate on validation set
         result, img_merge = validate(
-            val_loader, model, epoch, logger
-        )  # evaluate on validation set
+            val_loader, model, epoch, logger, criterion, device
+        )
 
         # remember best rmse and save checkpoint
         is_best = result.rmse < best_result.rmse
@@ -262,6 +257,8 @@ def train(train_loader, model, criterion, optimizer, epoch, logger, device):
     end = time.time()
 
     batch_num = len(train_loader)
+
+    total_loss = 0.0
 
     for i, (input, target) in enumerate(train_loader):
         # itr_count += 1
@@ -325,11 +322,20 @@ def train(train_loader, model, criterion, optimizer, epoch, logger, device):
             logger.add_scalar("Train/Delta2", result.delta2, current_step)
             logger.add_scalar("Train/Delta3", result.delta3, current_step)
 
-    avg = average_meter.average()
+        total_loss += loss.item()
+
+    # avg = average_meter.average()
+
+    wandb.log(
+        {
+            "train/loss": total_loss / len(train_loader),
+        },
+        step=epoch,
+    )
 
 
 # validation
-def validate(val_loader, model, epoch, logger):
+def validate(val_loader, model, epoch, logger, criterion, device):
     average_meter = AverageMeter()
 
     model.eval()  # switch to evaluate mode
@@ -338,17 +344,22 @@ def validate(val_loader, model, epoch, logger):
 
     skip = len(val_loader) // 9  # save images every skip iters
 
+    total_loss = 0.0
+
     for i, (input, target) in enumerate(val_loader):
-        input, target = input.cuda(), target.cuda()
-        torch.cuda.synchronize()
+        input, target = input.to(device), target.to(device)
+        if device == "cuda":
+            torch.cuda.synchronize()
         data_time = time.time() - end
 
         # compute output
         end = time.time()
         with torch.no_grad():
             pred = model(input)
+            loss = criterion(pred, target)
 
-        torch.cuda.synchronize()
+        if device == "cuda":
+            torch.cuda.synchronize()
         gpu_time = time.time() - end
 
         # measure accuracy and record loss
@@ -393,6 +404,8 @@ def validate(val_loader, model, epoch, logger):
                 )
             )
 
+        total_loss += loss.item()
+
     avg = average_meter.average()
 
     print(
@@ -412,6 +425,15 @@ def validate(val_loader, model, epoch, logger):
     logger.add_scalar("Test/Delta1", avg.delta1, epoch)
     logger.add_scalar("Test/Delta2", avg.delta2, epoch)
     logger.add_scalar("Test/Delta3", avg.delta3, epoch)
+
+    wandb.log(
+        {
+            "val/loss": total_loss / len(val_loader),
+            "val/rmse": avg.rmse,
+        },
+        step=epoch,
+    )
+
     return avg, img_merge
 
 

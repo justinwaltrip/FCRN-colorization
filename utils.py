@@ -40,10 +40,10 @@ def parse_command():
     parser.add_argument(
         "--lr",
         "--learning-rate",
-        default=0.01,
+        default=0.00001,
         type=float,
         metavar="LR",
-        help="initial learning rate (default 0.0001)",
+        help="initial learning rate (default: 0.00001)",
     )
     parser.add_argument(
         "--lr_patience",
@@ -77,10 +77,10 @@ def parse_command():
     parser.add_argument(
         "--print-freq",
         "-p",
-        default=10,
+        default=1,
         type=int,
         metavar="N",
-        help="print frequency (default: 10)",
+        help="print frequency (default: 1)",
     )
     parser.add_argument(
         "--overfit",

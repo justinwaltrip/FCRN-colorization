@@ -7,6 +7,12 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
+To setup wandb, run:
+
+```
+wandb login
+```
+
 ## Data
 
 To download and process the NYUv2 dataset, run:

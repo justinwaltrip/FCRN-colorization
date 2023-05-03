@@ -6,11 +6,19 @@ iheight, iwidth = 480, 640  # raw image size
 
 
 class NYUDataset(MyDataloader):
-    def __init__(self, root, type, sparsifier=None, modality="rgb"):
-        super(NYUDataset, self).__init__(root, type, sparsifier, modality)
+    def __init__(
+        self, root, type, sparsifier=None, modality="rgb", small_subset: bool = False
+    ):
+        super(NYUDataset, self).__init__(
+            root, type, sparsifier, modality, small_subset=small_subset
+        )
         self.output_size = (228, 304)
 
     def train_transform(self, rgb, depth):
+        # if using small subset, skip data augmentation
+        if self.small_subset:
+            return self.val_transform(rgb, depth)
+
         s = np.random.uniform(1.0, 1.5)  # random scaling
         depth_np = depth / s
         angle = np.random.uniform(-5.0, 5.0)  # random rotation degrees
