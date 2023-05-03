@@ -1,7 +1,10 @@
+#!/bin/bash
+
 # create venv
 sudo apt install python3-venv
 python3 -m venv .env
 source .env/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 
 # install os packages 
