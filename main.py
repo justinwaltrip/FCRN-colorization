@@ -94,6 +94,12 @@ def main():
 
     train_loader, val_loader = create_loader(args)
 
+    # # TODO remove (visualize validation data)
+    # val_sample = next(iter(val_loader))
+    # input, target = utils.get_sample_imgs(val_sample, val_loader)
+    # utils.save_image(input, "input.png")
+    # utils.save_image(target, "target.png")
+
     if args.resume:
         assert os.path.isfile(args.resume), \
             "=> no checkpoint found at '{}'".format(args.resume)

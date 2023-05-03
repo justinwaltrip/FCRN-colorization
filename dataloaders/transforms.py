@@ -225,6 +225,42 @@ class ToTensor(object):
             return img.float()
 
 
+class FromTensor(object):
+    """Convert a ``torch.*Tensor`` to ``numpy.ndarray``.
+
+    Converts a torch.*Tensor of shape (C x H x W) or (H x W) to a numpy.ndarray of shape (H x W x C)
+    """
+
+    def __call__(self, pic):
+        """Convert a ``torch.*Tensor`` to ``numpy.ndarray``.
+
+        Args:
+            pic (Tensor or numpy.ndarray): Image to be converted to numpy.ndarray.
+
+        Returns:
+            ndarray: Converted image.
+        """
+        if torch.is_tensor(pic):
+            # handle torch.*Tensor
+            pic = pic.numpy()
+            if pic.ndim == 2:
+                return pic
+            elif pic.ndim == 3:
+                return pic.transpose(1, 2, 0)
+            else:
+                raise RuntimeError('pic should be Tensor or ndarray with 2 or 3 dimensions. Got {}'.format(pic.ndim))
+        elif isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                return pic
+            elif pic.ndim == 3:
+                return pic.transpose(1, 2, 0)
+            else:
+                raise RuntimeError('pic should be Tensor or ndarray with 2 or 3 dimensions. Got {}'.format(pic.ndim))
+        else:
+            raise RuntimeError('pic should be Tensor or ndarray. Got {}'.format(type(pic)))
+
+
 class NormalizeNumpyArray(object):
     """Normalize a ``numpy.ndarray`` with mean and standard deviation.
     Given mean: ``(M1,...,Mn)`` and std: ``(M1,..,Mn)`` for ``n`` channels, this transform
@@ -255,6 +291,7 @@ class NormalizeNumpyArray(object):
         for i in range(3):
             img[:,:,i] = (img[:,:,i] - self.mean[i]) / self.std[i]
         return img
+
 
 class NormalizeTensor(object):
     """Normalize an tensor image with mean and standard deviation.
@@ -337,11 +374,11 @@ class Resize(object):
         if img.ndim == 3:
             # return misc.imresize(img, self.size, self.interpolation)
             height, width, _ = img.shape
-            return np.array(Image.fromarray(img).resize((int(height * self.size), int(width * self.size)), 0))
+            return np.array(Image.fromarray(img).resize((int(width * self.size), int(height * self.size)), 0))
         elif img.ndim == 2:
             # return misc.imresize(img, self.size, self.interpolation, 'F')
             height, width = img.shape
-            return np.array(Image.fromarray(img).resize((int(height * self.size), int(width * self.size)), 0))
+            return np.array(Image.fromarray(img).resize((int(width * self.size), int(height * self.size)), 0))
         else:
             RuntimeError('img should be ndarray with 2 or 3 dimensions. Got {}'.format(img.ndim))
 
