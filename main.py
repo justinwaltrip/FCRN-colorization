@@ -35,44 +35,66 @@ best_result.set_to_worst()
 
 
 def create_loader(args):
-    traindir = os.path.join(Path.db_root_dir(args.dataset), 'train')
+    traindir = os.path.join(Path.db_root_dir(args.dataset), "train")
     if os.path.exists(traindir):
         print('Train dataset "{}" is existed!'.format(traindir))
     else:
         print('Train dataset "{}" is not existed!'.format(traindir))
         exit(-1)
 
-    valdir = os.path.join(Path.db_root_dir(args.dataset), 'val')
+    valdir = os.path.join(Path.db_root_dir(args.dataset), "val")
     if os.path.exists(traindir):
         print('Train dataset "{}" is existed!'.format(valdir))
     else:
         print('Train dataset "{}" is not existed!'.format(valdir))
         exit(-1)
 
-    if args.dataset == 'kitti':
-        train_set = kitti_dataloader.KITTIDataset(traindir, type='train')
-        val_set = kitti_dataloader.KITTIDataset(valdir, type='val')
+    if args.dataset == "kitti":
+        train_set = kitti_dataloader.KITTIDataset(traindir, type="train")
+        val_set = kitti_dataloader.KITTIDataset(valdir, type="val")
 
         # sample 3200 pictures for validation from val set
         weights = [1 for i in range(len(val_set))]
-        print('weights:', len(weights))
+        print("weights:", len(weights))
         sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=3200)
-    elif args.dataset == 'nyu':
-        train_set = nyu_dataloader.NYUDataset(traindir, type='train')
-        val_set = nyu_dataloader.NYUDataset(valdir, type='val')
+    elif args.dataset == "nyu":
+        # if overfit, train and val set are the same
+        if args.overfit:
+            overfit_size = 50
+            train_set = nyu_dataloader.NYUDataset(traindir, type="train")
+            train_set = [train_set[i] for i in range(overfit_size)]
+            val_set = train_set
+        else:
+            train_set = nyu_dataloader.NYUDataset(traindir, type="train")
+            val_set = nyu_dataloader.NYUDataset(valdir, type="val")
     else:
-        print('no dataset named as ', args.dataset)
+        print("no dataset named as ", args.dataset)
         exit(-1)
 
     train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+        train_set,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
 
-    if args.dataset == 'kitti':
+    if args.dataset == "kitti":
         val_loader = torch.utils.data.DataLoader(
-            val_set, batch_size=args.batch_size, sampler=sampler, num_workers=args.workers, pin_memory=True)
+            val_set,
+            batch_size=args.batch_size,
+            sampler=sampler,
+            num_workers=args.workers,
+            pin_memory=True,
+        )
     else:
         val_loader = torch.utils.data.DataLoader(
-            val_set, batch_size=1, shuffle=False, num_workers=args.workers, pin_memory=True)
+            val_set,
+            batch_size=1,
+            shuffle=False,
+            num_workers=args.workers,
+            pin_memory=True,
+        )
 
     return train_loader, val_loader
 
@@ -89,35 +111,35 @@ def main():
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         args.batch_size = args.batch_size * torch.cuda.device_count()
     else:
-        # print("Let's use GPU ", torch.cuda.current_device())
-        pass
+        print(f"Using device {device}")
 
     train_loader, val_loader = create_loader(args)
 
-    # # TODO remove (visualize validation data)
+    # # visualize validation data
     # val_sample = next(iter(val_loader))
     # input, target = utils.get_sample_imgs(val_sample, val_loader)
     # utils.save_image(input, "input.png")
     # utils.save_image(target, "target.png")
 
     if args.resume:
-        assert os.path.isfile(args.resume), \
-            "=> no checkpoint found at '{}'".format(args.resume)
+        assert os.path.isfile(args.resume), "=> no checkpoint found at '{}'".format(
+            args.resume
+        )
         print("=> loading checkpoint '{}'".format(args.resume))
         checkpoint = torch.load(args.resume)
 
-        start_epoch = checkpoint['epoch'] + 1
-        best_result = checkpoint['best_result']
-        optimizer = checkpoint['optimizer']
+        start_epoch = checkpoint["epoch"] + 1
+        best_result = checkpoint["best_result"]
+        optimizer = checkpoint["optimizer"]
 
         # model_dict = checkpoint['model'].module.state_dict()  # to load the trained model using multi-GPUs
         # model = FCRN.ResNet(output_size=train_loader.dataset.output_size, pretrained=False)
         # model.load_state_dict(model_dict)
 
         # solve 'out of memory'
-        model = checkpoint['model']
+        model = checkpoint["model"]
 
-        print("=> loaded checkpoint (epoch {})".format(checkpoint['epoch']))
+        print("=> loaded checkpoint (epoch {})".format(checkpoint["epoch"]))
 
         # clear memory
         del checkpoint
@@ -130,18 +152,23 @@ def main():
         start_epoch = 0
 
         # different modules have different learning rate
-        train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
-                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
+        train_params = [
+            {"params": model.get_1x_lr_params(), "lr": args.lr},
+            {"params": model.get_10x_lr_params(), "lr": args.lr * 10},
+        ]
 
         # optimizer = torch.optim.SGD(train_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-        optimizer = torch.optim.Adam(train_params, lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(
+            train_params, lr=args.lr, weight_decay=args.weight_decay
+        )
 
         # You can use DataParallel() whether you use Multi-GPUs or not
         model = nn.DataParallel(model).to(device)
 
     # when training, use reduceLROnPlateau to reduce learning rate
     scheduler = lr_scheduler.ReduceLROnPlateau(
-        optimizer, 'min', patience=args.lr_patience)
+        optimizer, "min", patience=args.lr_patience
+    )
 
     # loss function
     criterion = criteria.MaskedL1Loss()
@@ -150,59 +177,77 @@ def main():
     output_directory = utils.get_output_directory(args)
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-    best_txt = os.path.join(output_directory, 'best.txt')
-    config_txt = os.path.join(output_directory, 'config.txt')
+    best_txt = os.path.join(output_directory, "best.txt")
+    config_txt = os.path.join(output_directory, "config.txt")
 
     # write training parameters to config file
     if not os.path.exists(config_txt):
-        with open(config_txt, 'w') as txtfile:
+        with open(config_txt, "w") as txtfile:
             args_ = vars(args)
-            args_str = ''
+            args_str = ""
             for k, v in args_.items():
-                args_str = args_str + str(k) + ':' + str(v) + ',\t\n'
+                args_str = args_str + str(k) + ":" + str(v) + ",\t\n"
             txtfile.write(args_str)
 
     # create log
-    log_path = os.path.join(output_directory, 'logs',
-                            datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname())
+    log_path = os.path.join(
+        output_directory,
+        "logs",
+        datetime.now().strftime("%b%d_%H-%M-%S") + "_" + socket.gethostname(),
+    )
     if os.path.isdir(log_path):
         shutil.rmtree(log_path)
     os.makedirs(log_path)
     logger = SummaryWriter(log_path)
 
     for epoch in range(start_epoch, args.epochs):
-
         # remember change of the learning rate
         for i, param_group in enumerate(optimizer.param_groups):
-            old_lr = float(param_group['lr'])
-            logger.add_scalar('Lr/lr_' + str(i), old_lr, epoch)
+            old_lr = float(param_group["lr"])
+            logger.add_scalar("Lr/lr_" + str(i), old_lr, epoch)
 
-        train(train_loader, model, criterion, optimizer, epoch, logger, device)  # train for one epoch
-        result, img_merge = validate(val_loader, model, epoch, logger)  # evaluate on validation set
+        train(
+            train_loader, model, criterion, optimizer, epoch, logger, device
+        )  # train for one epoch
+        result, img_merge = validate(
+            val_loader, model, epoch, logger
+        )  # evaluate on validation set
 
         # remember best rmse and save checkpoint
         is_best = result.rmse < best_result.rmse
         if is_best:
             best_result = result
-            with open(best_txt, 'w') as txtfile:
+            with open(best_txt, "w") as txtfile:
                 txtfile.write(
                     "epoch={}, rmse={:.3f}, rml={:.3f}, log10={:.3f}, d1={:.3f}, d2={:.3f}, dd31={:.3f}, "
-                    "t_gpu={:.4f}".
-                        format(epoch, result.rmse, result.absrel, result.lg10, result.delta1, result.delta2,
-                               result.delta3,
-                               result.gpu_time))
+                    "t_gpu={:.4f}".format(
+                        epoch,
+                        result.rmse,
+                        result.absrel,
+                        result.lg10,
+                        result.delta1,
+                        result.delta2,
+                        result.delta3,
+                        result.gpu_time,
+                    )
+                )
             if img_merge is not None:
-                img_filename = output_directory + '/comparison_best.png'
+                img_filename = output_directory + "/comparison_best.png"
                 utils.save_image(img_merge, img_filename)
 
         # save checkpoint for each epoch
-        utils.save_checkpoint({
-            'args': args,
-            'epoch': epoch,
-            'model': model,
-            'best_result': best_result,
-            'optimizer': optimizer,
-        }, is_best, epoch, output_directory)
+        utils.save_checkpoint(
+            {
+                "args": args,
+                "epoch": epoch,
+                "model": model,
+                "best_result": best_result,
+                "optimizer": optimizer,
+            },
+            is_best,
+            epoch,
+            output_directory,
+        )
 
         # when rml doesn't fall, reduce learning rate
         scheduler.step(result.absrel)
@@ -219,7 +264,6 @@ def train(train_loader, model, criterion, optimizer, epoch, logger, device):
     batch_num = len(train_loader)
 
     for i, (input, target) in enumerate(train_loader):
-
         # itr_count += 1
         input, target = input.to(device), target.to(device)
         # print('input size  = ', input.size())
@@ -251,26 +295,35 @@ def train(train_loader, model, criterion, optimizer, epoch, logger, device):
         end = time.time()
 
         if (i + 1) % args.print_freq == 0:
-            print('=> output: {}'.format(output_directory))
-            print('Train Epoch: {0} [{1}/{2}]\t'
-                  't_Data={data_time:.3f}({average.data_time:.3f}) '
-                  't_GPU={gpu_time:.3f}({average.gpu_time:.3f})\n\t'
-                  'Loss={Loss:.5f} '
-                  'RMSE={result.rmse:.2f}({average.rmse:.2f}) '
-                  'RML={result.absrel:.2f}({average.absrel:.2f}) '
-                  'Log10={result.lg10:.3f}({average.lg10:.3f}) '
-                  'Delta1={result.delta1:.3f}({average.delta1:.3f}) '
-                  'Delta2={result.delta2:.3f}({average.delta2:.3f}) '
-                  'Delta3={result.delta3:.3f}({average.delta3:.3f})'.format(
-                epoch, i + 1, len(train_loader), data_time=data_time,
-                gpu_time=gpu_time, Loss=loss.item(), result=result, average=average_meter.average()))
+            print("=> output: {}".format(output_directory))
+            print(
+                "Train Epoch: {0} [{1}/{2}]\t"
+                "t_Data={data_time:.3f}({average.data_time:.3f}) "
+                "t_GPU={gpu_time:.3f}({average.gpu_time:.3f})\n\t"
+                "Loss={Loss:.5f} "
+                "RMSE={result.rmse:.2f}({average.rmse:.2f}) "
+                "RML={result.absrel:.2f}({average.absrel:.2f}) "
+                "Log10={result.lg10:.3f}({average.lg10:.3f}) "
+                "Delta1={result.delta1:.3f}({average.delta1:.3f}) "
+                "Delta2={result.delta2:.3f}({average.delta2:.3f}) "
+                "Delta3={result.delta3:.3f}({average.delta3:.3f})".format(
+                    epoch,
+                    i + 1,
+                    len(train_loader),
+                    data_time=data_time,
+                    gpu_time=gpu_time,
+                    Loss=loss.item(),
+                    result=result,
+                    average=average_meter.average(),
+                )
+            )
             current_step = epoch * batch_num + i
-            logger.add_scalar('Train/RMSE', result.rmse, current_step)
-            logger.add_scalar('Train/rml', result.absrel, current_step)
-            logger.add_scalar('Train/Log10', result.lg10, current_step)
-            logger.add_scalar('Train/Delta1', result.delta1, current_step)
-            logger.add_scalar('Train/Delta2', result.delta2, current_step)
-            logger.add_scalar('Train/Delta3', result.delta3, current_step)
+            logger.add_scalar("Train/RMSE", result.rmse, current_step)
+            logger.add_scalar("Train/rml", result.absrel, current_step)
+            logger.add_scalar("Train/Log10", result.lg10, current_step)
+            logger.add_scalar("Train/Delta1", result.delta1, current_step)
+            logger.add_scalar("Train/Delta2", result.delta2, current_step)
+            logger.add_scalar("Train/Delta3", result.delta3, current_step)
 
     avg = average_meter.average()
 
@@ -286,7 +339,6 @@ def validate(val_loader, model, epoch, logger):
     skip = len(val_loader) // 9  # save images every skip iters
 
     for i, (input, target) in enumerate(val_loader):
-
         input, target = input.cuda(), target.cuda()
         torch.cuda.synchronize()
         data_time = time.time() - end
@@ -307,7 +359,7 @@ def validate(val_loader, model, epoch, logger):
         end = time.time()
 
         # save 8 images for visualization
-        if args.dataset == 'kitti':
+        if args.dataset == "kitti":
             rgb = input[0]
             pred = pred[0]
             target = target[0]
@@ -320,40 +372,48 @@ def validate(val_loader, model, epoch, logger):
             row = utils.merge_into_row(rgb, target, pred)
             img_merge = utils.add_row(img_merge, row)
         elif i == 8 * skip:
-            filename = output_directory + '/comparison_' + str(epoch) + '.png'
+            filename = output_directory + "/comparison_" + str(epoch) + ".png"
             utils.save_image(img_merge, filename)
 
         if (i + 1) % args.print_freq == 0:
-            print('Test: [{0}/{1}]\t'
-                  't_GPU={gpu_time:.3f}({average.gpu_time:.3f})\n\t'
-                  'RMSE={result.rmse:.2f}({average.rmse:.2f}) '
-                  'RML={result.absrel:.2f}({average.absrel:.2f}) '
-                  'Log10={result.lg10:.3f}({average.lg10:.3f}) '
-                  'Delta1={result.delta1:.3f}({average.delta1:.3f}) '
-                  'Delta2={result.delta2:.3f}({average.delta2:.3f}) '
-                  'Delta3={result.delta3:.3f}({average.delta3:.3f})'.format(
-                i + 1, len(val_loader), gpu_time=gpu_time, result=result, average=average_meter.average()))
+            print(
+                "Test: [{0}/{1}]\t"
+                "t_GPU={gpu_time:.3f}({average.gpu_time:.3f})\n\t"
+                "RMSE={result.rmse:.2f}({average.rmse:.2f}) "
+                "RML={result.absrel:.2f}({average.absrel:.2f}) "
+                "Log10={result.lg10:.3f}({average.lg10:.3f}) "
+                "Delta1={result.delta1:.3f}({average.delta1:.3f}) "
+                "Delta2={result.delta2:.3f}({average.delta2:.3f}) "
+                "Delta3={result.delta3:.3f}({average.delta3:.3f})".format(
+                    i + 1,
+                    len(val_loader),
+                    gpu_time=gpu_time,
+                    result=result,
+                    average=average_meter.average(),
+                )
+            )
 
     avg = average_meter.average()
 
-    print('\n*\n'
-          'RMSE={average.rmse:.3f}\n'
-          'Rel={average.absrel:.3f}\n'
-          'Log10={average.lg10:.3f}\n'
-          'Delta1={average.delta1:.3f}\n'
-          'Delta2={average.delta2:.3f}\n'
-          'Delta3={average.delta3:.3f}\n'
-          't_GPU={time:.3f}\n'.format(
-        average=avg, time=avg.gpu_time))
+    print(
+        "\n*\n"
+        "RMSE={average.rmse:.3f}\n"
+        "Rel={average.absrel:.3f}\n"
+        "Log10={average.lg10:.3f}\n"
+        "Delta1={average.delta1:.3f}\n"
+        "Delta2={average.delta2:.3f}\n"
+        "Delta3={average.delta3:.3f}\n"
+        "t_GPU={time:.3f}\n".format(average=avg, time=avg.gpu_time)
+    )
 
-    logger.add_scalar('Test/rmse', avg.rmse, epoch)
-    logger.add_scalar('Test/Rel', avg.absrel, epoch)
-    logger.add_scalar('Test/log10', avg.lg10, epoch)
-    logger.add_scalar('Test/Delta1', avg.delta1, epoch)
-    logger.add_scalar('Test/Delta2', avg.delta2, epoch)
-    logger.add_scalar('Test/Delta3', avg.delta3, epoch)
+    logger.add_scalar("Test/rmse", avg.rmse, epoch)
+    logger.add_scalar("Test/Rel", avg.absrel, epoch)
+    logger.add_scalar("Test/log10", avg.lg10, epoch)
+    logger.add_scalar("Test/Delta1", avg.delta1, epoch)
+    logger.add_scalar("Test/Delta2", avg.delta2, epoch)
+    logger.add_scalar("Test/Delta3", avg.delta3, epoch)
     return avg, img_merge
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

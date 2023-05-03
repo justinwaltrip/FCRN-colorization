@@ -82,6 +82,11 @@ def parse_command():
         metavar="N",
         help="print frequency (default: 10)",
     )
+    parser.add_argument(
+        "--overfit",
+        action="store_true",
+        help="Overfit to a small subset of data, meant for debugging",
+    )
     args = parser.parse_args()
     return args
 
