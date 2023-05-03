@@ -266,7 +266,7 @@ def pretrain(train_loader, model, criterion, optimizer, epoch, logger):
 
     avg = average_meter.average()
     wandb.log({"epoch": epoch, "train loss": curr_loss/len(train_loader)})
-
+    print("loss is ", curr_loss/len(train_loader))
 
 # validation
 def prevalidate(val_loader, model, criterion, epoch, logger):
