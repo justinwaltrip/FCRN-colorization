@@ -100,9 +100,6 @@ def main():
     # utils.save_image(input, "input.png")
     # utils.save_image(target, "target.png")
 
-    # open input as image
-    input = input.numpy()
-
     if args.resume:
         assert os.path.isfile(args.resume), \
             "=> no checkpoint found at '{}'".format(args.resume)
