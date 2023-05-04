@@ -165,7 +165,7 @@ def main():
     )
 
     # loss function
-    criterion = criteria.MaskedL1Loss()
+    criterion = criteria.berHuLoss()
 
     # create directory path
     output_directory = utils.get_output_directory(args)
