@@ -348,8 +348,6 @@ def validate(val_loader, model, epoch, logger, criterion, device):
 
     end = time.time()
 
-    skip = len(val_loader) // 9  # save images every skip iters
-
     total_loss = 0.0
 
     for i, (input, target) in enumerate(val_loader):
@@ -375,20 +373,17 @@ def validate(val_loader, model, epoch, logger, criterion, device):
         average_meter.update(result, gpu_time, data_time, input.size(0))
         end = time.time()
 
-        # save 8 images for visualization
-        if args.dataset == "kitti":
-            rgb = input[0]
-            pred = pred[0]
-            target = target[0]
-        else:
-            rgb = input
-
         if i == 0:
-            img_merge = utils.merge_into_row(rgb, target, pred)
-        elif (i < 8 * skip) and (i % skip == 0):
-            row = utils.merge_into_row(rgb, target, pred)
-            img_merge = utils.add_row(img_merge, row)
-        elif i == 8 * skip:
+            # save 8 images for visualization
+            for j in range(8):
+                rgb = input[j]
+                _pred = pred[j]
+                _target = target[j]
+                if j == 0:
+                    img_merge = utils.merge_into_row(rgb, _target, _pred)
+                else:
+                    row = utils.merge_into_row(rgb, _target, _pred)
+                    img_merge = utils.add_row(img_merge, row)
             filename = output_directory + "/comparison_" + str(epoch) + ".png"
             utils.save_image(img_merge, filename)
 
