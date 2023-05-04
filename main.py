@@ -82,7 +82,7 @@ def create_loader(args):
     else:
         val_loader = torch.utils.data.DataLoader(
             val_set,
-            batch_size=1,
+            batch_size=args.batch_size,
             shuffle=False,
             num_workers=args.workers,
             pin_memory=True,

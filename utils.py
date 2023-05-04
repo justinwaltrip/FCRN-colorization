@@ -106,13 +106,10 @@ def get_output_directory(args):
 
 # 保存检查点
 def save_checkpoint(state, is_best, epoch, output_directory):
-    checkpoint_filename = os.path.join(
-        output_directory, "checkpoint-" + str(epoch) + ".pth.tar"
-    )
-    torch.save(state, checkpoint_filename)
+    # only save best model
     if is_best:
         best_filename = os.path.join(output_directory, "model_best.pth.tar")
-        shutil.copyfile(checkpoint_filename, best_filename)
+        torch.save(state, best_filename)
 
 
 def colored_depthmap(depth, d_min=None, d_max=None):
