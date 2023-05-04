@@ -324,11 +324,17 @@ def train(train_loader, model, criterion, optimizer, epoch, logger, device):
 
         total_loss += loss.item()
 
-    # avg = average_meter.average()
+    avg = average_meter.average()
 
     wandb.log(
         {
             "train/loss": total_loss / len(train_loader),
+            "train/rmse": avg.rmse,
+            "train/rml": avg.absrel,
+            "train/log10": avg.lg10,
+            "train/delta1": avg.delta1,
+            "train/delta2": avg.delta2,
+            "train/delta3": avg.delta3,
         },
         step=epoch,
     )
@@ -430,6 +436,11 @@ def validate(val_loader, model, epoch, logger, criterion, device):
         {
             "val/loss": total_loss / len(val_loader),
             "val/rmse": avg.rmse,
+            "val/rml": avg.absrel,
+            "val/log10": avg.lg10,
+            "val/delta1": avg.delta1,
+            "val/delta2": avg.delta2,
+            "val/delta3": avg.delta3,
         },
         step=epoch,
     )
