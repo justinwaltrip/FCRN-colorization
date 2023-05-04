@@ -24,7 +24,7 @@ seed = 1
 np.random.seed(seed)
 
 # create 80-10-10 train-val-test split
-idx = np.arange(1, len(images) + 1)
+idx = [np.array([id]) for id in np.arange(1, len(images) + 1)]
 shuffle_idx = np.random.permutation(idx)
 train_idx = shuffle_idx[:int(0.8 * len(images))]
 val_idx = shuffle_idx[int(0.8 * len(images)):int(0.9 * len(images))]
