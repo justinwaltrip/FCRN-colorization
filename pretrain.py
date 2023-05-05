@@ -105,7 +105,7 @@ def main():
         checkpoint = torch.load(args.resume)
 
         start_epoch = checkpoint['epoch'] + 1
-        best_result = checkpoint['best_result']
+        # best_result = checkpoint['best_result']
         optimizer = checkpoint['optimizer']
 
         # model_dict = checkpoint['model'].module.state_dict()  # to load the trained model using multi-GPUs

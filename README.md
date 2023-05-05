@@ -51,3 +51,19 @@ python main.py \
     --momentum 0.9 \
     --weight_decay 0
 ```
+
+## Colorization Pretraining
+
+To overfit a pretraining model on NYUv2, run:
+
+```
+python pretrain.py \
+    --dataset nyu \
+    --batch-size 16 \
+    --epochs 200 \
+    --lr 0.00001 \
+    --lr_patience 10 \
+    --momentum 0.9 \
+    --weight_decay 0 \
+    --overfit
+```
