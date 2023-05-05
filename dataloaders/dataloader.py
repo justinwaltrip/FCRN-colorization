@@ -4,6 +4,8 @@ import numpy as np
 import torch.utils.data as data
 import h5py
 import dataloaders.transforms as transforms
+from torchvision import transforms as tvtransforms
+import random
 
 IMG_EXTENSIONS = ['.h5', ]
 
@@ -77,10 +79,22 @@ class MyDataloader(data.Dataset):
         self.modality = modality
 
     def train_transform(self, rgb, depth):
-        raise (RuntimeError("train_transform() is not implemented. "))
+        # Transforms define in dataloader.transforms
+        # ToTensor already handeled
+        angle_for_rotate = np.random.rand(0,360)
+        return transforms.Compose([
+            tvtransforms.Grayscale(3),
+            transforms.Rotate(angle_for_rotate),
+            transforms.ColorJitter(),
+            ])
 
     def val_transform(rgb, depth):
-        raise (RuntimeError("val_transform() is not implemented."))
+        angle_for_rotate = np.random.rand(0, 360)
+        return transforms.Compose([
+            tvtransforms.Grayscale(3),
+            transforms.Rotate(angle_for_rotate),
+            transforms.ColorJitter(),
+            )]
 
     def create_sparse_depth(self, rgb, depth):
         if self.sparsifier is None:
