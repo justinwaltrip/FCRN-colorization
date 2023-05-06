@@ -5,7 +5,10 @@ import torch.utils.data as data
 import h5py
 import dataloaders.transforms as transforms
 from torchvision import transforms as tvtransforms
+import torch
 import random
+from skimage.color import lab2rgb, rgb2lab, rgb2gray
+from skimage import io
 
 IMG_EXTENSIONS = ['.h5', ]
 
@@ -83,7 +86,6 @@ class MyDataloader(data.Dataset):
         # ToTensor already handeled
         angle_for_rotate = np.random.rand(0,360)
         return transforms.Compose([
-            tvtransforms.Grayscale(3),
             transforms.Rotate(angle_for_rotate),
             transforms.ColorJitter(),
             ])
@@ -91,10 +93,9 @@ class MyDataloader(data.Dataset):
     def val_transform(rgb, depth):
         angle_for_rotate = np.random.rand(0, 360)
         return transforms.Compose([
-            tvtransforms.Grayscale(3),
             transforms.Rotate(angle_for_rotate),
             transforms.ColorJitter(),
-            )]
+            ])
 
     def create_sparse_depth(self, rgb, depth):
         if self.sparsifier is None:
@@ -125,24 +126,31 @@ class MyDataloader(data.Dataset):
     def __getitem__(self, index):
         rgb, depth = self.__getraw__(index)
         if self.transform is not None:
-            rgb_np, depth_np = self.transform(rgb, depth)
+            rgb_original, depth_np = self.transform(rgb, depth)
+            target = rgb_original
         else:
             raise (RuntimeError("transform not defined"))
 
-        if self.modality == 'rgb':
-            input_np = rgb_np
-        elif self.modality == 'rgbd':
-            input_np = self.create_rgbd(rgb_np, depth_np)
-        elif self.modality == 'd':
-            input_np = self.create_sparse_depth(rgb_np, depth_np)
+        #if self.modality == 'rgb':
+        #    input_np = rgb_original
+        #elif self.modality == 'rgbd':
+        #    input_np = self.create_rgbd(rgb_original, depth_np)
+        #elif self.modality == 'd':
+        #    input_np = self.create_sparse_depth(rgb_original, depth_np)
+        #elif self.modality == 'lab':
+        lab = rgb2lab(rgb_original)
+        lab = (lab + 128)/255
+        ab = lab[:, :, 1:3]
+        ab = torch.from_numpy(ab.transpose((2,0,1))).float()
+        rgb_original = rgb2gray(rgb_original)
 
-        input_tensor = to_tensor(input_np)
-        while input_tensor.dim() < 3:
-            input_tensor = input_tensor.unsqueeze(0)
-        depth_tensor = to_tensor(depth_np)
-        depth_tensor = depth_tensor.unsqueeze(0)
+        rgb_original = to_tensor(rgb_original)
+        ab = to_tensor(ab)
+        target = to_tensor(target)
+        while rgb_original.dim() < 3:
+            rgb_original = rgb_original.unsqueeze(0)
 
-        return input_tensor, depth_tensor
+        return rgb_original, ab, target
 
     def __len__(self):
         return len(self.imgs)

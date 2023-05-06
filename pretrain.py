@@ -125,7 +125,10 @@ def main():
         train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
                         {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
 
-        optimizer = torch.optim.SGD(train_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        #optimizer = torch.optim.SGD(train_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        # Optimizer for colorization
+        optimizer = torch.optim.Adam(train_params, lr=1e-2, weight_decay=0.0)
+
 
         # You can use DataParallel() whether you use Multi-GPUs or not
         model = nn.DataParallel(model).cuda()
@@ -211,7 +214,7 @@ def pretrain(train_loader, model, criterion, optimizer, epoch, logger):
     end = time.time()
     curr_loss = 0
     batch_num = len(train_loader)
-    for i, (input, target) in enumerate(train_loader):
+    for i, (input_gray, input_ab, target) in enumerate(train_loader):
 
         # itr_count += 1
         input, target = input.cuda(), target.cuda()
@@ -223,12 +226,12 @@ def pretrain(train_loader, model, criterion, optimizer, epoch, logger):
         # compute pred
         end = time.time()
 
-        pred = model(input)  # @wx 注意输出
+        pred = model(input_gray)  # @wx 注意输出
 
         # print('pred size = ', pred.size())
         # print('target size = ', target.size())
 
-        loss = criterion(pred, target)
+        loss = criterion(pred, input_ab)
         optimizer.zero_grad()
         loss.backward()  # compute gradient and do SGD step
         optimizer.step()
