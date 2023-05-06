@@ -9,6 +9,8 @@ import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+from skimage.color import lab2rgb, rgb2lab, rgb2gray
+from skimage import io
 
 cmap = plt.cm.jet
 
@@ -186,3 +188,15 @@ def get_sample_imgs(sample, loader):
     input, target = loader.dataset.inv_val_transform(input, target)
     colored_target = colored_depthmap(target)
     return input, colored_target
+
+
+def to_rgb(grayscale_input, ab_input):
+    '''Show/save rgb image from grayscale and ab channels
+        Input save_path in the form {'grayscale': '/path/', 'colorized': '/path/'}'''
+    color_image = torch.cat((grayscale_input, ab_input), 0).numpy() # combine channels
+    color_image = color_image.transpose((1, 2, 0))  # rescale for matplotlib
+    color_image[:, :, 0:1] = color_image[:, :, 0:1] * 100
+    color_image[:, :, 1:3] = color_image[:, :, 1:3] * 255 - 128   
+    color_image = lab2rgb(color_image.astype(np.float64))
+    grayscale_input = grayscale_input.squeeze().numpy()
+    return color_image

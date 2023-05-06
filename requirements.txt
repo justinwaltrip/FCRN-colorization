@@ -6,3 +6,4 @@ tensorboardX
 scipy
 h5py
 wandb
+scikit-image

@@ -22,7 +22,7 @@ print(args)
 
 best_loss = float('Inf')
 
-wandb_enabled = True
+wandb_enabled = False
 
 
 def create_loader(args):
@@ -125,7 +125,7 @@ def main():
     else:
         print("=> creating Model")
         # ensure that 3 channels are output
-        model = FCRN.ResNet(output_size=train_loader.dataset.output_size, out_channels=3, upsample_mode="nearest")
+        model = FCRN.ResNet(output_size=train_loader.dataset.output_size, out_channels=2)
         print("=> model created.")
         start_epoch = 0
 
@@ -216,7 +216,7 @@ def pretrain(train_loader, model, criterion, optimizer, epoch, logger, device):
     # end = time.time()
     # batch_num = len(train_loader)
     total_loss = 0.0
-    for _, (input, target) in enumerate(train_loader):
+    for _, (input, target, _) in enumerate(train_loader):
         input, target = input.to(device), target.to(device)
         # print('input size  = ', input.size())
         # print('target size = ', target.size())
@@ -291,7 +291,7 @@ def prevalidate(val_loader, model, criterion, epoch, logger, device):
 
     total_loss = 0.0
 
-    for i, (input, target) in enumerate(val_loader):
+    for i, (input, target, rgb_batch) in enumerate(val_loader):
         input, target = input.to(device), target.to(device)
         if device == "cuda":
             torch.cuda.synchronize()
@@ -318,12 +318,15 @@ def prevalidate(val_loader, model, criterion, epoch, logger, device):
             # save 8 images for visualization
             for j in range(8):
                 grayscale = input[j]
-                colorized = pred[j]
-                rgb = target[j]
+                rgb_true = rgb_batch[j]
+
+                ab_pred = pred[j]
+                rgb_pred = utils.to_rgb(grayscale.detach().cpu()[0:1, :, :], ab_pred.detach().cpu())
+
                 if j == 0:
-                    img_merge = utils.merge_into_row_colorization(rgb, grayscale, colorized)
+                    img_merge = utils.merge_into_row_colorization(rgb_true, grayscale, rgb_pred)
                 else:
-                    row = utils.merge_into_row_colorization(rgb, grayscale, colorized)
+                    row = utils.merge_into_row_colorization(rgb_true, grayscale, rgb_pred)
                     img_merge = utils.add_row(img_merge, row)
             filename = output_directory + "/comparison_" + str(epoch) + ".png"
             utils.save_image(img_merge, filename)

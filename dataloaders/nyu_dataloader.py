@@ -3,6 +3,8 @@ import dataloaders.transforms as transforms
 from dataloaders.dataloader import MyDataloader
 import torchvision as tv
 from PIL import Image
+from skimage.color import lab2rgb, rgb2lab, rgb2gray
+from skimage import io
 
 iheight, iwidth = 480, 640  # raw image size
 
@@ -89,7 +91,7 @@ class NYUDatasetColorization(MyDataloader):
     def __getitem__(self, index):
         rgb, depth = self.__getraw__(index)
         if self.transform is not None:
-            grayscale_np, rgb_np = self.transform(rgb, depth)
+            grayscale_np, rgb_np, ab_np = self.transform(rgb, depth)
         else:
             raise (RuntimeError("transform not defined"))
 
@@ -103,10 +105,12 @@ class NYUDatasetColorization(MyDataloader):
         input_tensor = to_tensor(input_np)
         while input_tensor.dim() < 3:
             input_tensor = input_tensor.unsqueeze(0)
-        target_tensor = to_tensor(rgb_np)
+        target_tensor = to_tensor(ab_np)
         # depth_tensor = depth_tensor.unsqueeze(0)
 
-        return input_tensor, target_tensor
+        rgb_tensor = to_tensor(rgb_np)
+
+        return input_tensor, target_tensor, rgb_tensor
 
     def train_transform(self, rgb, depth):
         # if using small subset, skip data augmentation
@@ -155,6 +159,11 @@ class NYUDatasetColorization(MyDataloader):
         # perform resize, crop on rgb
         rgb_np = transform(rgb)
 
+        # get lab from rgb
+        lab = rgb2lab(rgb_np)
+        lab_normalized = (lab + 128) / 255
+        ab_np = lab_normalized[:, :, 1:3]
+
         # further transform rgb to gray scale
         grayscale_np = grayscale_transform(Image.fromarray(rgb_np))
 
@@ -162,8 +171,8 @@ class NYUDatasetColorization(MyDataloader):
         rgb_np = np.asfarray(rgb_np, dtype="float") / 255
         grayscale_np = np.asfarray(grayscale_np, dtype="float") / 255
 
-        # input gray scale, output rgb
-        return grayscale_np, rgb_np
+        # gray scale, output rgb, ab input
+        return grayscale_np, rgb_np, ab_np
 
     # def inv_val_transform(self, rgb_np, depth_np):
     #     rgb_np = rgb_np * 255
