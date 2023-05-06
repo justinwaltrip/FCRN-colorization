@@ -22,7 +22,7 @@ print(args)
 
 best_loss = float('Inf')
 
-wandb_enabled = False
+wandb_enabled = True
 
 
 def create_loader(args):
@@ -125,7 +125,7 @@ def main():
     else:
         print("=> creating Model")
         # ensure that 3 channels are output
-        model = FCRN.ResNet(output_size=train_loader.dataset.output_size, out_channels=3)
+        model = FCRN.ResNet(output_size=train_loader.dataset.output_size, out_channels=3, upsample_mode="nearest")
         print("=> model created.")
         start_epoch = 0
 

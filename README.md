@@ -61,7 +61,7 @@ python pretrain.py \
     --dataset nyu \
     --batch-size 16 \
     --epochs 200 \
-    --lr 0.00001 \
+    --lr 0.0001 \
     --lr_patience 10 \
     --momentum 0.9 \
     --weight_decay 0 \
