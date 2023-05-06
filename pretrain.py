@@ -1,16 +1,13 @@
 from datetime import datetime
 import shutil
 import socket
-import time
 import torch
 from tensorboardX import SummaryWriter
 from torch.optim import lr_scheduler
 
 from dataloaders import kitti_dataloader, nyu_dataloader
 from dataloaders.path import Path
-from metrics import AverageMeter, Result
 import utils
-import criteria
 import os
 import torch.nn as nn
 import wandb
@@ -24,6 +21,8 @@ args = utils.parse_command()
 print(args)
 
 best_loss = float('Inf')
+
+wandb_enabled = False
 
 
 def create_loader(args):
@@ -52,13 +51,13 @@ def create_loader(args):
     elif args.dataset == 'nyu':
         # if overfit, train and val set are the same
         if args.overfit:
-            train_set = nyu_dataloader.NYUDataset(
+            train_set = nyu_dataloader.NYUDatasetColorization(
                 traindir, type="train", small_subset=True
             )
             val_set = train_set
         else:
-            train_set = nyu_dataloader.NYUDataset(traindir, type="train")
-            val_set = nyu_dataloader.NYUDataset(valdir, type="val")
+            train_set = nyu_dataloader.NYUDatasetColorization(traindir, type="train")
+            val_set = nyu_dataloader.NYUDatasetColorization(valdir, type="val")
     else:
         print('no dataset named as ', args.dataset)
         exit(-1)
@@ -93,8 +92,10 @@ def main():
         args.batch_size = args.batch_size * torch.cuda.device_count()
     else:
         print(f"Using device {device}")
-    # start new wandb run
-    wandb.init(project="fcrn-colorization", notes="pretraining")
+
+    if wandb_enabled:
+        # start new wandb run
+        wandb.init(project="fcrn-colorization", notes="pretraining")
 
     train_loader, val_loader = create_loader(args)
 
@@ -123,7 +124,8 @@ def main():
         torch.cuda.empty_cache()
     else:
         print("=> creating Model")
-        model = FCRN.ResNet(output_size=train_loader.dataset.output_size)
+        # ensure that 3 channels are output
+        model = FCRN.ResNet(output_size=train_loader.dataset.output_size, out_channels=3)
         print("=> model created.")
         start_epoch = 0
 
@@ -136,7 +138,7 @@ def main():
         )
 
         # You can use DataParallel() whether you use Multi-GPUs or not
-        model = nn.DataParallel(model).cuda()
+        model = nn.DataParallel(model).to(device)
 
     # when training, use reduceLROnPlateau to reduce learning rate
     scheduler = lr_scheduler.ReduceLROnPlateau(
@@ -271,12 +273,13 @@ def pretrain(train_loader, model, criterion, optimizer, epoch, logger, device):
 
     # avg = average_meter.average()
 
-    wandb.log(
-        {
-            "train/loss": total_loss / len(train_loader),
-        },
-        step=epoch,
-    )
+    if wandb_enabled:
+        wandb.log(
+            {
+                "train/loss": total_loss / len(train_loader),
+            },
+            step=epoch,
+        )
 
 # validation
 def prevalidate(val_loader, model, criterion, epoch, logger, device):
@@ -314,13 +317,13 @@ def prevalidate(val_loader, model, criterion, epoch, logger, device):
         if i == 0:
             # save 8 images for visualization
             for j in range(8):
-                rgb = input[j]
-                _pred = pred[j]
-                _target = target[j]
+                grayscale = input[j]
+                colorized = pred[j]
+                rgb = target[j]
                 if j == 0:
-                    img_merge = utils.merge_into_row(rgb, _target, _pred)
+                    img_merge = utils.merge_into_row_colorization(rgb, grayscale, colorized)
                 else:
-                    row = utils.merge_into_row(rgb, _target, _pred)
+                    row = utils.merge_into_row_colorization(rgb, grayscale, colorized)
                     img_merge = utils.add_row(img_merge, row)
             filename = output_directory + "/comparison_" + str(epoch) + ".png"
             utils.save_image(img_merge, filename)
@@ -358,12 +361,13 @@ def prevalidate(val_loader, model, criterion, epoch, logger, device):
     # logger.add_scalar('Test/Delta2', avg.delta2, epoch)
     # logger.add_scalar('Test/Delta3', avg.delta3, epoch)
 
-    wandb.log(
-        {
-            "val/loss": total_loss / len(val_loader),
-        },
-        step=epoch,
-    )
+    if wandb_enabled:
+        wandb.log(
+            {
+                "val/loss": total_loss / len(val_loader),
+            },
+            step=epoch,
+        )
 
     return total_loss / len(val_loader), img_merge
 

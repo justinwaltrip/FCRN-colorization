@@ -121,6 +121,16 @@ def colored_depthmap(depth, d_min=None, d_max=None):
     return 255 * cmap(depth_relative)[:, :, :3]  # H, W, C
 
 
+def merge_into_row_colorization(rgb, grayscale, colorized):
+    rgb = 255 * np.transpose(np.squeeze(rgb.cpu().numpy()), (1, 2, 0))  # H, W, C
+    grayscale = 255 * np.transpose(np.squeeze(grayscale.data.cpu().numpy()), (1, 2, 0))  # H, W, C
+    colorized = 255 * np.transpose(np.squeeze(colorized.data.cpu().numpy()), (1, 2, 0))  # H, W, C
+
+    img_merge = np.hstack([rgb, grayscale, colorized])
+
+    return img_merge
+
+
 def merge_into_row(input, depth_target, depth_pred):
     rgb = 255 * np.transpose(np.squeeze(input.cpu().numpy()), (1, 2, 0))  # H, W, C
     depth_target_cpu = np.squeeze(depth_target.cpu().numpy())
