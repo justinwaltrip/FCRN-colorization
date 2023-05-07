@@ -141,8 +141,9 @@ def main():
         model = nn.DataParallel(model).to(device)
 
     # when training, use reduceLROnPlateau to reduce learning rate
-    scheduler = lr_scheduler.ReduceLROnPlateau(
-        optimizer, 'min', patience=args.lr_patience)
+    if args.lr_patience > 0:
+        scheduler = lr_scheduler.ReduceLROnPlateau(
+            optimizer, 'min', patience=args.lr_patience)
 
     # loss function
     criterion = nn.MSELoss()
@@ -203,8 +204,9 @@ def main():
             'optimizer': optimizer,
         }, is_best, epoch, output_directory)
 
-        # when rml doesn't fall, reduce learning rate
-        scheduler.step(loss)
+        if args.lr_patience > 0:
+            # when rml doesn't fall, reduce learning rate
+            scheduler.step(loss)
 
     logger.close()
 

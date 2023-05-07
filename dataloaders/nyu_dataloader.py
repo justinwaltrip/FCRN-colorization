@@ -137,6 +137,11 @@ class NYUDatasetColorization(MyDataloader):
         rgb_np = transform(rgb)
         rgb_np = self.color_jitter(rgb_np)  # random color jittering
 
+        # get lab from rgb
+        lab = rgb2lab(rgb_np)
+        lab_normalized = (lab + 128) / 255
+        ab_np = lab_normalized[:, :, 1:]
+
         # further transform rgb to gray scale
         grayscale_np = grayscale_transform(Image.fromarray(rgb_np))
 
@@ -144,8 +149,8 @@ class NYUDatasetColorization(MyDataloader):
         rgb_np = np.asfarray(rgb_np, dtype="float") / 255
         grayscale_np = np.asfarray(grayscale_np, dtype="float") / 255
 
-        # input gray scale, output rgb
-        return grayscale_np, rgb_np
+        # gray scale, rgb, ab
+        return grayscale_np, rgb_np, ab_np
 
     def val_transform(self, rgb, depth):
         transform = transforms.Compose(
@@ -171,7 +176,7 @@ class NYUDatasetColorization(MyDataloader):
         rgb_np = np.asfarray(rgb_np, dtype="float") / 255
         grayscale_np = np.asfarray(grayscale_np, dtype="float") / 255
 
-        # gray scale, output rgb, ab input
+        # gray scale, rgb, ab
         return grayscale_np, rgb_np, ab_np
 
     # def inv_val_transform(self, rgb_np, depth_np):

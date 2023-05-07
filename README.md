@@ -67,3 +67,45 @@ python pretrain.py \
     --weight_decay 0 \
     --overfit
 ```
+
+To train a model on NYUv2 colorization, run:
+
+```
+python pretrain.py \
+    --dataset nyu \
+    --batch-size 32 \
+    --epochs 200 \
+    --lr 0.0001 \
+    --lr_patience 10 \
+    --momentum 0.9 \
+    --weight_decay 0
+```
+
+## Transfer
+
+To transfer a pretrained model on NYUv2 colorization to NYUv2 depth estimation, run:
+
+```
+python transfer.py \
+    --dataset nyu \
+    --batch-size 32 \
+    --epochs 200 \
+    --lr 0.00001 \
+    --lr_patience 10 \
+    --momentum 0.9 \
+    --weight_decay 0
+```
+
+~To resume training a pretrained model on NYUv2 colorization, run:~
+
+```
+python transfer.py \
+    --dataset nyu \
+    --batch-size 32 \
+    --epochs 200 \
+    --lr 0.00001 \
+    --lr_patience 10 \
+    --momentum 0.9 \
+    --weight_decay 0 \
+    --resume result/upproj/run_1/model_best.pth.tar
+```

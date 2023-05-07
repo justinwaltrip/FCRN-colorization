@@ -2,15 +2,14 @@
 # @Time    : 2018/10/21 20:57
 # @Author  : Wang Xin
 # @Email   : wangxin_buaa@163.com
+import warnings
 import glob
 import os
 import torch
-import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-from skimage.color import lab2rgb, rgb2lab, rgb2gray
-from skimage import io
+from skimage.color import lab2rgb, rgb2lab
 
 cmap = plt.cm.jet
 
@@ -197,5 +196,7 @@ def to_rgb(ab_input, rgb_true):
     color_image = torch.cat((lightness_tensor, ab_input), 0).numpy() # combine channels
     color_image = color_image.transpose((1, 2, 0)) 
     color_image[:, :, 1:3] = color_image[:, :, 1:3] * 255 - 128   
-    color_image = 255 * lab2rgb(color_image.astype(np.float64))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        color_image = 255 * lab2rgb(color_image.astype(np.float64))
     return color_image
