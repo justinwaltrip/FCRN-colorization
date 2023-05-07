@@ -126,13 +126,6 @@ def colored_depthmap(depth, d_min=None, d_max=None):
 def merge_into_row_colorization(rgb, grayscale, colorized):
     rgb = 255 * np.transpose(np.squeeze(rgb.cpu().numpy()), (1, 2, 0))  # H, W, C
     grayscale = 255 * np.transpose(np.squeeze(grayscale.data.cpu().numpy()), (1, 2, 0))  # H, W, C
-
-    # truncate colorized images
-    colorized = 255 * np.transpose(np.squeeze(colorized.data.cpu().numpy()), (1, 2, 0))  # H, W, C
-    colorized[colorized < 0] = 0
-    colorized[colorized > 255] = 255
-    colorized = colorized.astype(np.uint8)
-
     img_merge = np.hstack([rgb, grayscale, colorized])
 
     return img_merge
@@ -190,13 +183,19 @@ def get_sample_imgs(sample, loader):
     return input, colored_target
 
 
-def to_rgb(grayscale_input, ab_input):
+def to_rgb(ab_input, rgb_true):
     '''Show/save rgb image from grayscale and ab channels
         Input save_path in the form {'grayscale': '/path/', 'colorized': '/path/'}'''
-    color_image = torch.cat((grayscale_input, ab_input), 0).numpy() # combine channels
-    color_image = color_image.transpose((1, 2, 0))  # rescale for matplotlib
-    color_image[:, :, 0:1] = color_image[:, :, 0:1] * 100
+    # convert to lab
+    rgb = 255 * np.transpose(np.squeeze(rgb_true.cpu().numpy()), (1, 2, 0))
+    lab = rgb2lab(rgb.astype(np.uint8))
+    # get lightness channel
+    lightness = lab[:, :, 0:1]
+    # tranpose back to pytorch order and cast to pytorch
+    lightness_tensor = torch.from_numpy(lightness.transpose((2, 0, 1)))
+
+    color_image = torch.cat((lightness_tensor, ab_input), 0).numpy() # combine channels
+    color_image = color_image.transpose((1, 2, 0)) 
     color_image[:, :, 1:3] = color_image[:, :, 1:3] * 255 - 128   
-    color_image = lab2rgb(color_image.astype(np.float64))
-    grayscale_input = grayscale_input.squeeze().numpy()
+    color_image = 255 * lab2rgb(color_image.astype(np.float64))
     return color_image

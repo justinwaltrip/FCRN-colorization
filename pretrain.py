@@ -22,7 +22,7 @@ print(args)
 
 best_loss = float('Inf')
 
-wandb_enabled = False
+wandb_enabled = True
 
 
 def create_loader(args):
@@ -320,8 +320,9 @@ def prevalidate(val_loader, model, criterion, epoch, logger, device):
                 grayscale = input[j]
                 rgb_true = rgb_batch[j]
 
+                # convert ab to rgb using lightness channel from input
                 ab_pred = pred[j]
-                rgb_pred = utils.to_rgb(grayscale.detach().cpu()[0:1, :, :], ab_pred.detach().cpu())
+                rgb_pred = utils.to_rgb(ab_pred.detach().cpu(), rgb_true)
 
                 if j == 0:
                     img_merge = utils.merge_into_row_colorization(rgb_true, grayscale, rgb_pred)
